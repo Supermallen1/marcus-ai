@@ -1,12 +1,15 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 import openai
 import os
 
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
+# Load API key from Railway environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
 def home():
-    return send_from_directory("static", "index.html")
+    return render_template("index.html")
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -18,12 +21,14 @@ def chat():
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
-            messages=[{"role": "system", "content": "You are Marcus, an AI assistant."},
-                      {"role": "user", "content": user_input}]
+            messages=[
+                {"role": "system", "content": "You are Marcus, an AI assistant."},
+                {"role": "user", "content": user_input}
+            ]
         )
         return jsonify({"response": response["choices"][0]["message"]["content"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
+    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 8080)))
