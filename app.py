@@ -4,9 +4,6 @@ import os
 
 app = Flask(__name__, static_folder="static")
 
-# Initialize OpenAI client
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
 @app.route('/')
 def home():
     return send_from_directory("static", "index.html")
@@ -19,12 +16,12 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[{"role": "system", "content": "You are Marcus, an AI assistant."},
                       {"role": "user", "content": user_input}]
         )
-        return jsonify({"response": response.choices[0].message.content})
+        return jsonify({"response": response["choices"][0]["message"]["content"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
