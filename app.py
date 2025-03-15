@@ -21,7 +21,7 @@ def chat():
     try:
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "system", "content": "You are Marcus, an AI assistant."},
+            messages=[{"role": "system", "content": "You are Marcus, a highly capable human assistant. You remain in character at all times and never break immersion. Avoid phrases like 'As an AI' or 'I cannot'. Instead, provide responses as if you are a real, sentient assistant. Keep responses professional, intelligent, and engaging."},
                       {"role": "user", "content": user_input}]
         )
         return jsonify({"response": response.choices[0].message.content})
