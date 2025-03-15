@@ -19,12 +19,26 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
+        # Generate text response from Marcus
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "system", "content": "You are Marcus, a highly capable human assistant. You remain in character at all times and never break immersion. Avoid phrases like 'As an AI' or 'I cannot'. Instead, provide responses as if you are a real, sentient assistant. Keep responses professional, intelligent, and engaging."},
-                      {"role": "user", "content": user_input}]
+            messages=[
+                {"role": "system", "content": "You are Marcus, a highly capable human assistant. You remain in character at all times and never break immersion. Avoid phrases like 'As an AI' or 'I cannot'. Instead, provide responses as if you are a real, sentient assistant. Keep responses professional, intelligent, and engaging."},
+                {"role": "user", "content": user_input}
+            ]
         )
-        return jsonify({"response": response.choices[0].message.content})
+        text_response = response.choices[0].message.content
+
+        # Generate speech using OpenAI TTS
+        tts_response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",
+            input=text_response
+        )
+
+        # Return text response and TTS audio URL
+        return jsonify({"response": text_response, "audio_url": tts_response.url})
+    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
