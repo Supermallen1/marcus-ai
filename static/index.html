@@ -39,34 +39,73 @@
     <button id="send-btn">Send</button>
     <button id="voice-btn">Start Listening</button>
 
-    <script>
-        document.getElementById("send-btn").addEventListener("click", sendMessage);
-        document.getElementById("user-input").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                sendMessage();
-            }
+<script>
+document.getElementById("send-btn").addEventListener("click", sendMessage);
+document.getElementById("user-input").addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+
+// Voice recognition setup
+const voiceButton = document.getElementById("voice-btn");
+let recognition;
+if ("webkitSpeechRecognition" in window) {
+    recognition = new webkitSpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[event.results.length - 1][0].transcript;
+        document.getElementById("user-input").value = transcript; // Set input field
+        sendMessage(); // Auto-send message
+    };
+
+    recognition.onerror = function(event) {
+        console.error("Speech recognition error:", event.error);
+    };
+
+    voiceButton.addEventListener("click", function() {
+        if (recognition.running) {
+            recognition.stop();
+            voiceButton.textContent = "Start Listening";
+        } else {
+            recognition.start();
+            voiceButton.textContent = "Stop Listening";
+        }
+    });
+} else {
+    voiceButton.disabled = true;
+    voiceButton.textContent = "Voice not supported";
+}
+
+// Function to send messages
+async function sendMessage() {
+    const userMessage = document.getElementById("user-input").value;
+    if (!userMessage) return;
+
+    const chatBox = document.getElementById("chat-box");
+    chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+    document.getElementById("user-input").value = "";
+
+    try {
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: userMessage })
         });
 
-        async function sendMessage() {
-            const userMessage = document.getElementById("user-input").value;
-            if (!userMessage) return;
+        const data = await response.json();
+        chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
+    } catch (error) {
+        console.error("Error:", error);
+        chatBox.innerHTML += `<p><strong>Marcus:</strong> Error</p>`;
+    }
+}
+</script>
 
-            const chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
-            document.getElementById("user-input").value = "";
-
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: userMessage })
-            });
-
-            const data = await response.json();
-            chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    </script>
 
 </body>
 </html>
