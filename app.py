@@ -1,15 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import openai
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 
 # Initialize OpenAI client
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/')
 def home():
-    return "Marcus AI is running!"
+    return send_from_directory("static", "index.html")
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -30,4 +30,3 @@ def chat():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-
