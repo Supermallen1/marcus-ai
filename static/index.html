@@ -89,9 +89,9 @@
             toggleButton.textContent = "Voice Not Supported";
         }
 
-        // Function to send messages
+        // Function to send messages (Fixes text input issues)
         async function sendMessage() {
-            const userMessage = document.getElementById("user-input").value;
+            const userMessage = document.getElementById("user-input").value.trim();
             if (!userMessage) return;
 
             const chatBox = document.getElementById("chat-box");
@@ -102,4 +102,25 @@
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON
+                    body: JSON.stringify({ message: userMessage })
+                });
+
+                const data = await response.json();
+                chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
+
+                // Play audio response if available
+                if (data.audio_url) {
+                    const audio = new Audio(data.audio_url);
+                    audio.play();
+                }
+
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                console.error("Error:", error);
+                chatBox.innerHTML += `<p><strong>Marcus:</strong> Error</p>`;
+            }
+        }
+    </script>
+
+</body>
+</html>
