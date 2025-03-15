@@ -24,7 +24,7 @@
             padding: 10px;
             font-size: 16px;
         }
-        #send-btn {
+        #send-btn, #toggle-listening {
             padding: 10px;
             font-size: 16px;
             cursor: pointer;
@@ -33,7 +33,6 @@
             font-size: 24px;
             padding: 15px 30px;
             margin-top: 10px;
-            cursor: pointer;
         }
     </style>
 </head>
@@ -103,18 +102,4 @@
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: userMessage })
-                });
-
-                const data = await response.json();
-                chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
-                chatBox.scrollTop = chatBox.scrollHeight;
-            } catch (error) {
-                console.error("Error:", error);
-                chatBox.innerHTML += `<p><strong>Marcus:</strong> Error</p>`;
-            }
-        }
-    </script>
-
-</body>
-</html>
+                    body: JSON
