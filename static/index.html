@@ -36,26 +36,22 @@
             background-color: #444;
             color: white;
         }
-        #send-btn {
+        #send-btn, #voice-btn {
             padding: 10px 15px;
             margin-left: 10px;
             border: none;
             border-radius: 5px;
-            background-color: #007BFF;
-            color: white;
             cursor: pointer;
+            color: white;
+        }
+        #send-btn {
+            background-color: #007BFF;
         }
         #send-btn:hover {
             background-color: #0056b3;
         }
         #voice-btn {
-            padding: 10px 15px;
-            margin-left: 10px;
-            border: none;
-            border-radius: 5px;
             background-color: #28A745;
-            color: white;
-            cursor: pointer;
         }
         #voice-btn:hover {
             background-color: #1e7e34;
@@ -77,11 +73,11 @@
         recognition.continuous = false;
         recognition.lang = "en-US";
 
-        document.getElementById("send-btn").addEventListener("click", sendMessage);
+        document.getElementById("send-btn").addEventListener("click", () => sendMessage(false));
         document.getElementById("user-input").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
-                sendMessage();
+                sendMessage(false);
             }
         });
 
@@ -99,11 +95,10 @@
 
         recognition.onresult = function(event) {
             const userMessage = event.results[0][0].transcript;
-            document.getElementById("chat-box").innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
-            sendMessage(userMessage);
+            sendMessage(true, userMessage);
         };
 
-        async function sendMessage(userMessage = null) {
+        async function sendMessage(isVoice, userMessage = null) {
             if (!userMessage) {
                 userMessage = document.getElementById("user-input").value;
                 document.getElementById("user-input").value = "";
@@ -117,14 +112,14 @@
                 const response = await fetch("/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: userMessage })
+                    body: JSON.stringify({ message: userMessage, voice: isVoice })
                 });
 
                 const data = await response.json();
                 chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
 
-                // Play Marcus' voice response
-                if (data.audio_url) {
+                // Play Marcus' voice response only if input was voice
+                if (isVoice && data.audio_url) {
                     const audio = new Audio(data.audio_url);
                     audio.play();
                 }
