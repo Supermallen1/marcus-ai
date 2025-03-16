@@ -116,14 +116,23 @@
                 });
 
                 const data = await response.json();
-                chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response || "Error"}</p>`;
+                
+                console.log("Response received:", data); // Debugging log
 
-                // Play Marcus' voice response only if input was voice
+                if (data.response) {
+                    chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
+                } else {
+                    chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
+                }
+
+                // Play Marcus' voice response only if input was voice and an audio URL is provided
                 if (isVoice && data.audio_url) {
+                    console.log("Playing audio:", data.audio_url); // Debugging log
                     const audio = new Audio(data.audio_url);
                     audio.play();
                 }
             } catch (error) {
+                console.error("Error processing request:", error);
                 chatBox.innerHTML += `<p><strong>Marcus:</strong> Error processing request.</p>`;
             }
         }
