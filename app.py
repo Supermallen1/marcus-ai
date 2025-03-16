@@ -6,7 +6,7 @@ import requests
 app = Flask(__name__, static_folder="static")
 
 # n8n Webhook URL (Replace this with your actual webhook URL)
-N8N_WEBHOOK_URL = "https://YOUR-N8N-INSTANCE.com/webhook/marcus"
+N8N_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/77cc4dc2-ad54-41b3-b3df-1dff0f800d48"
 
 @app.route('/')
 def home():
