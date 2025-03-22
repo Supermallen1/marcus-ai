@@ -14,25 +14,30 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    user_input = request.json.get("message", "")
-    input_type = request.json.get("type", "text")  # "text" or "voice"
+    user_input = request.form.get("message", "")
+    input_type = request.form.get("voice", "false").lower() == "true"
 
-    if not user_input:
-        return jsonify({"error": "No message provided"}), 400
+    if not user_input and 'files' not in request.files:
+        return jsonify({"error": "No input provided"}), 400
 
     try:
-        # Send request to n8n webhook
-        response = requests.post(N8N_WEBHOOK_URL, json={
+        # Prepare payload for n8n webhook
+        data = {
             "message": user_input,
-            "type": input_type  # This helps n8n determine the response format
-        })
+            "type": "voice" if input_type else "text"
+        }
+
+        files = request.files.getlist("files")
+        file_payload = [("files", (f.filename, f.stream, f.content_type)) for f in files]
+
+        response = requests.post(N8N_WEBHOOK_URL, data=data, files=file_payload)
 
         if response.status_code != 200:
             return jsonify({"error": "Failed to get response from n8n"}), 500
-        
+
         response_data = response.json()
         marcus_reply = response_data.get("response", "")
-        audio_url = response_data.get("audio_url", None)  # If n8n generates audio
+        audio_url = response_data.get("audio_url", None)
 
         return jsonify({"response": marcus_reply, "audio_url": audio_url})
 
