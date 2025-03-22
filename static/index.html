@@ -96,6 +96,11 @@
     recognition.onresult = function (event) {
       const userMessage = event.results[0][0].transcript;
       sendMessage(true, userMessage);
+      if (isListening) recognition.start();
+    };
+
+    recognition.onend = function () {
+      if (isListening) recognition.start();
     };
 
     async function sendMessage(isVoice, userMessage = null) {
@@ -106,7 +111,9 @@
       if (!userMessage && document.getElementById("file-input").files.length === 0) return;
 
       const chatBox = document.getElementById("chat-box");
-      chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+      if (!isVoice) {
+        chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+      }
 
       const formData = new FormData();
       formData.append("message", userMessage);
@@ -127,15 +134,13 @@
         const data = await response.json();
         console.log("Response received:", data);
 
-        if (data.response) {
-          chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
-        } else {
-          chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
-        }
-
         if (isVoice && data.audio_url) {
           const audio = new Audio(data.audio_url);
           audio.play();
+        } else if (!isVoice && data.response) {
+          chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
+        } else {
+          chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
         }
 
         chatBox.scrollTop = chatBox.scrollHeight;
