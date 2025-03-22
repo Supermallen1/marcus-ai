@@ -1,141 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marcus AI Chat</title>
-    <style>
-        body {
-            background-color: black;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-        #chat-container {
-            width: 50%;
-            margin: auto;
-            background-color: #222;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-        }
-        #chat-box {
-            min-height: 200px;
-            padding: 10px;
-            background-color: #333;
-            border-radius: 5px;
-            overflow-y: auto;
-            text-align: left;
-        }
-        #user-input {
-            width: 80%;
-            padding: 10px;
-            margin-top: 10px;
-            border: none;
-            border-radius: 5px;
-            background-color: #444;
-            color: white;
-        }
-        #send-btn, #voice-btn {
-            padding: 10px 15px;
-            margin-left: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            color: white;
-        }
-        #send-btn {
-            background-color: #007BFF;
-        }
-        #send-btn:hover {
-            background-color: #0056b3;
-        }
-        #voice-btn {
-            background-color: #28A745;
-        }
-        #voice-btn:hover {
-            background-color: #1e7e34;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Marcus AI Chat</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #chat-container {
+      width: 50%;
+      margin: auto;
+      background-color: #222;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+    }
+    #chat-box {
+      height: 300px;
+      padding: 10px;
+      background-color: #333;
+      border-radius: 5px;
+      overflow-y: auto;
+      text-align: left;
+    }
+    #user-input, #file-input {
+      width: 60%;
+      padding: 10px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #444;
+      color: white;
+    }
+    #send-btn, #voice-btn {
+      padding: 10px 15px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
+    #send-btn {
+      background-color: #007BFF;
+    }
+    #send-btn:hover {
+      background-color: #0056b3;
+    }
+    #voice-btn {
+      background-color: #28A745;
+    }
+    #voice-btn:hover {
+      background-color: #1e7e34;
+    }
+  </style>
 </head>
 <body>
-    <h1>Marcus AI Chat</h1>
-    <div id="chat-container">
-        <div id="chat-box"></div>
-        <input type="text" id="user-input" placeholder="Type your message...">
-        <button id="send-btn">Send</button>
-        <button id="voice-btn">Contact Marcus</button>
-    </div>
+  <div id="chat-container">
+    <div id="chat-box"></div>
+    <input type="text" id="user-input" placeholder="Type your message..." />
+    <input type="file" id="file-input" multiple />
+    <button id="send-btn">Send</button>
+    <button id="voice-btn">Contact Marcus</button>
+  </div>
 
-    <script>
-        let isListening = false;
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.continuous = false;
-        recognition.lang = "en-US";
+  <script>
+    let isListening = false;
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = false;
+    recognition.lang = "en-US";
 
-        document.getElementById("send-btn").addEventListener("click", () => sendMessage(false));
-        document.getElementById("user-input").addEventListener("keypress", function(event) {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                sendMessage(false);
-            }
+    document.getElementById("send-btn").addEventListener("click", () => sendMessage(false));
+    document.getElementById("user-input").addEventListener("keypress", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage(false);
+      }
+    });
+
+    document.getElementById("voice-btn").addEventListener("click", function () {
+      if (!isListening) {
+        recognition.start();
+        document.getElementById("voice-btn").innerText = "Disconnect";
+        isListening = true;
+      } else {
+        recognition.stop();
+        document.getElementById("voice-btn").innerText = "Contact Marcus";
+        isListening = false;
+      }
+    });
+
+    recognition.onresult = function (event) {
+      const userMessage = event.results[0][0].transcript;
+      sendMessage(true, userMessage);
+    };
+
+    async function sendMessage(isVoice, userMessage = null) {
+      if (!userMessage) {
+        userMessage = document.getElementById("user-input").value;
+        document.getElementById("user-input").value = "";
+      }
+      if (!userMessage && document.getElementById("file-input").files.length === 0) return;
+
+      const chatBox = document.getElementById("chat-box");
+      chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
+
+      const formData = new FormData();
+      formData.append("message", userMessage);
+      formData.append("voice", isVoice);
+
+      const files = document.getElementById("file-input").files;
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+      document.getElementById("file-input").value = "";
+
+      try {
+        const response = await fetch("/chat", {
+          method: "POST",
+          body: formData
         });
 
-        document.getElementById("voice-btn").addEventListener("click", function() {
-            if (!isListening) {
-                recognition.start();
-                document.getElementById("voice-btn").innerText = "Disconnect";
-                isListening = true;
-            } else {
-                recognition.stop();
-                document.getElementById("voice-btn").innerText = "Contact Marcus";
-                isListening = false;
-            }
-        });
+        const data = await response.json();
+        console.log("Response received:", data);
 
-        recognition.onresult = function(event) {
-            const userMessage = event.results[0][0].transcript;
-            sendMessage(true, userMessage);
-        };
-
-        async function sendMessage(isVoice, userMessage = null) {
-            if (!userMessage) {
-                userMessage = document.getElementById("user-input").value;
-                document.getElementById("user-input").value = "";
-            }
-            if (!userMessage) return;
-
-            const chatBox = document.getElementById("chat-box");
-            chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
-
-            try {
-                const response = await fetch("/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ message: userMessage, voice: isVoice })
-                });
-
-                const data = await response.json();
-                
-                console.log("Response received:", data); // Debugging log
-
-                if (data.response) {
-                    chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
-                } else {
-                    chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
-                }
-
-                // Play Marcus' voice response only if input was voice and an audio URL is provided
-                if (isVoice && data.audio_url) {
-                    console.log("Playing audio:", data.audio_url); // Debugging log
-                    const audio = new Audio(data.audio_url);
-                    audio.play();
-                }
-            } catch (error) {
-                console.error("Error processing request:", error);
-                chatBox.innerHTML += `<p><strong>Marcus:</strong> Error processing request.</p>`;
-            }
+        if (data.response) {
+          chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
+        } else {
+          chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
         }
-    </script>
+
+        if (isVoice && data.audio_url) {
+          const audio = new Audio(data.audio_url);
+          audio.play();
+        }
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } catch (error) {
+        console.error("Error processing request:", error);
+        chatBox.innerHTML += `<p><strong>Marcus:</strong> Error processing request.</p>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+    }
+  </script>
 </body>
 </html>
