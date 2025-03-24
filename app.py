@@ -16,6 +16,7 @@ N8N_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/77cc4dc2-ad54-41b3-
 GCS_KEY_JSON = os.getenv("GCS_KEY")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
 
+print("GCS_KEY_JSON is", "set" if GCS_KEY_JSON else "NOT set")
 gcs_credentials = service_account.Credentials.from_service_account_info(json.loads(GCS_KEY_JSON))
 storage_client = storage.Client(credentials=gcs_credentials)
 bucket = storage_client.bucket(GCS_BUCKET_NAME)
