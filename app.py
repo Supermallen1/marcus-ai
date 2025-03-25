@@ -6,20 +6,18 @@ from google.oauth2 import service_account
 import google.auth.transport.requests
 from google.cloud import storage
 import json
+import base64
+import time
+from io import BytesIO
 
 app = Flask(__name__, static_folder="static")
 
-# n8n Webhook URL (Replace this with your actual webhook URL)
+# n8n Webhook URL
 N8N_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/77cc4dc2-ad54-41b3-b3df-1dff0f800d48"
 
-# Load Google Cloud credentials from Railway environment variable
+# Load Google Cloud credentials
 GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
-
-import os
-
-print("DEBUG GCS_KEY_JSON:", os.getenv("GCS_KEY_JSON"))
-print("GCS_KEY_JSON is", "set" if GCS_KEY_JSON else "NOT set")
 gcs_credentials = service_account.Credentials.from_service_account_info(json.loads(GCS_KEY_JSON))
 storage_client = storage.Client(credentials=gcs_credentials)
 bucket = storage_client.bucket(GCS_BUCKET_NAME)
@@ -46,30 +44,25 @@ def chat():
         files = request.files.getlist("files")
         file_payload = [("files", (f.filename, f.stream, f.content_type)) for f in files]
 
+        # Send to n8n
         response = requests.post(N8N_WEBHOOK_URL, data=data, files=file_payload)
-
-        if response.status_code != 200:
-            return jsonify({"error": "Failed to get response from n8n"}), 500
-
         response_data = response.json()
+
+        # Get Marcus reply and possible audio
         marcus_reply = response_data.get("response", "")
-        import base64
-import time
-from io import BytesIO
+        audio_url = response_data.get("audio_url", None)
+        audio_data_b64 = response_data.get("audio_data")
 
-audio_url = response_data.get("audio_url", None)
-audio_data_b64 = response_data.get("audio_data")
+        # Upload audio to GCS if provided
+        if audio_data_b64:
+            audio_bytes = base64.b64decode(audio_data_b64)
+            audio_filename = f"marcus_reply_{int(time.time())}.mp3"
 
-if audio_data_b64:
-    audio_bytes = base64.b64decode(audio_data_b64)
-    audio_filename = f"marcus_reply_{int(time.time())}.mp3"
+            blob = bucket.blob(audio_filename)
+            blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
+            blob.make_public()
 
-    blob = bucket.blob(audio_filename)
-    blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
-    blob.make_public()
-
-    audio_url = blob.public_url
-
+            audio_url = blob.public_url
 
         return jsonify({"response": marcus_reply, "audio_url": audio_url})
 
@@ -78,3 +71,4 @@ if audio_data_b64:
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
+
