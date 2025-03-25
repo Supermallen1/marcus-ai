@@ -53,7 +53,23 @@ def chat():
 
         response_data = response.json()
         marcus_reply = response_data.get("response", "")
-        audio_url = response_data.get("audio_url", None)
+        import base64
+import time
+from io import BytesIO
+
+audio_url = response_data.get("audio_url", None)
+audio_data_b64 = response_data.get("audio_data")
+
+if audio_data_b64:
+    audio_bytes = base64.b64decode(audio_data_b64)
+    audio_filename = f"marcus_reply_{int(time.time())}.mp3"
+
+    blob = bucket.blob(audio_filename)
+    blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
+    blob.make_public()
+
+    audio_url = blob.public_url
+
 
         return jsonify({"response": marcus_reply, "audio_url": audio_url})
 
