@@ -13,7 +13,7 @@ app = Flask(__name__, static_folder="static")
 N8N_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/77cc4dc2-ad54-41b3-b3df-1dff0f800d48"
 
 # Load Google Cloud credentials from Railway environment variable
-GCS_KEY_JSON = os.getenv("GCS_KEY")
+GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
 
 import os
