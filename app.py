@@ -2,19 +2,19 @@ from flask import Flask, request, jsonify, send_from_directory
 import os
 import requests
 import json
-import time
 import base64
+import time
 from io import BytesIO
 from google.oauth2 import service_account
 from google.cloud import storage
 
 app = Flask(__name__, static_folder="static")
 
-# === Webhook URLs ===
+# === Webhook URLs (Update these with your actual n8n webhook URLs) ===
 N8N_CHAT_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/8822c292-c476-49a6-8353-fcc45d67dea9"
 N8N_VOICE_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/a713fdd6-6923-4a6b-a906-0e381c1681ef"
 
-# === Google Cloud Credentials ===
+# === Google Cloud credentials ===
 GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
 gcs_credentials = service_account.Credentials.from_service_account_info(json.loads(GCS_KEY_JSON))
@@ -27,57 +27,51 @@ def home():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    print("🔥 Chat endpoint was hit")  # Debug log
+    print("\n🔥 Chat endpoint was hit")
 
     user_input = request.form.get("message", "")
-    is_voice = request.form.get("voice", "false").lower() == "true"
+    input_type = request.form.get("voice", "false").lower() == "true"
 
     if not user_input and 'files' not in request.files:
+        print("❌ No input provided")
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        # Choose webhook based on input type
-        webhook_url = N8N_VOICE_WEBHOOK_URL if is_voice else N8N_CHAT_WEBHOOK_URL
+        webhook_url = N8N_VOICE_WEBHOOK_URL if input_type else N8N_CHAT_WEBHOOK_URL
+        print("🧠 Webhook selected:", webhook_url)
 
-        # Prepare data payload
         data = {
             "message": user_input,
-            "type": "voice" if is_voice else "text"
+            "type": "voice" if input_type else "text"
         }
+        print("📦 Payload to n8n:", data)
 
-        # Handle file uploads
         files = request.files.getlist("files")
-        file_payload = [
-            ("files", (f.filename, f.stream, f.content_type)) for f in files
-        ] if files else None
+        file_payload = [("files", (f.filename, f.stream, f.content_type)) for f in files]
 
-        # POST to the appropriate n8n webhook
         response = requests.post(webhook_url, data=data, files=file_payload)
-        response_data = response.json()
+        print("✅ n8n Response status:", response.status_code)
 
-        # Handle output from Marcus
+        response_data = response.json()
+        print("📝 n8n Response data:", response_data)
+
         marcus_reply = response_data.get("response", "")
-        audio_url = response_data.get("audio_url")
+        audio_url = response_data.get("audio_url", None)
         audio_data_b64 = response_data.get("audio_data")
 
-        # If audio data is returned, upload to GCS and replace audio_url
         if audio_data_b64:
             audio_bytes = base64.b64decode(audio_data_b64)
             audio_filename = f"marcus_reply_{int(time.time())}.mp3"
-
             blob = bucket.blob(audio_filename)
             blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
             blob.make_public()
-
             audio_url = blob.public_url
+            print("🔊 Uploaded audio to GCS:", audio_url)
 
-        return jsonify({
-            "response": marcus_reply,
-            "audio_url": audio_url
-        })
+        return jsonify({"response": marcus_reply, "audio_url": audio_url})
 
     except Exception as e:
-        print("❌ Error:", str(e))
+        print("🔥 Exception occurred:", str(e))
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
