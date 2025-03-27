@@ -12,8 +12,9 @@ from io import BytesIO
 
 app = Flask(__name__, static_folder="static")
 
-# n8n Webhook URL
-N8N_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/77cc4dc2-ad54-41b3-b3df-1dff0f800d48"
+# 🔗 Replace these with your actual n8n webhook URLs
+N8N_CHAT_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/8822c292-c476-49a6-8353-fcc45d67dea9"
+N8N_VOICE_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/a713fdd6-6923-4a6b-a906-0e381c1681ef"
 
 # Load Google Cloud credentials
 GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
@@ -35,25 +36,29 @@ def chat():
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        # Prepare payload for n8n webhook
+        # 🔁 Use different n8n webhook URL depending on input type
+        webhook_url = N8N_VOICE_WEBHOOK_URL if input_type else N8N_CHAT_WEBHOOK_URL
+
+        # Prepare payload for n8n
         data = {
             "message": user_input,
             "type": "voice" if input_type else "text"
         }
 
+        # Attach any uploaded files
         files = request.files.getlist("files")
         file_payload = [("files", (f.filename, f.stream, f.content_type)) for f in files]
 
         # Send to n8n
-        response = requests.post(N8N_WEBHOOK_URL, data=data, files=file_payload)
+        response = requests.post(webhook_url, data=data, files=file_payload)
         response_data = response.json()
 
-        # Get Marcus reply and possible audio
+        # Parse response from Marcus
         marcus_reply = response_data.get("response", "")
         audio_url = response_data.get("audio_url", None)
         audio_data_b64 = response_data.get("audio_data")
 
-        # Upload audio to GCS if provided
+        # 🔊 If audio is returned, upload it to GCS and generate public URL
         if audio_data_b64:
             audio_bytes = base64.b64decode(audio_data_b64)
             audio_filename = f"marcus_reply_{int(time.time())}.mp3"
@@ -64,11 +69,13 @@ def chat():
 
             audio_url = blob.public_url
 
-        return jsonify({"response": marcus_reply, "audio_url": audio_url})
+        return jsonify({
+            "response": marcus_reply,
+            "audio_url": audio_url
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-
