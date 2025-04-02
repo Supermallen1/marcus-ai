@@ -46,7 +46,6 @@ def chat():
         response_data = response.json()
         print("📝 n8n Response data:", response_data)
 
-        marcus_reply = response_data.get("response", "")
         audio_data_b64 = response_data.get("audio_data")
 
         audio_url = None
