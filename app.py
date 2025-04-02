@@ -47,8 +47,8 @@ def chat():
         print("📝 n8n Response data:", response_data)
 
         audio_data_b64 = response_data.get("audio_data")
-
         audio_url = None
+
         if audio_data_b64:
             audio_bytes = base64.b64decode(audio_data_b64)
             audio_filename = f"marcus_reply_{int(time.time())}.mp3"
@@ -57,8 +57,10 @@ def chat():
                 f.write(audio_bytes)
             audio_url = f"/static/audio/{audio_filename}"
             print("🔊 Saved audio file:", audio_url)
+        else:
+            print("❌ No audio data received")
 
-        return jsonify({"response": marcus_reply, "audio_url": audio_url})
+        return jsonify({"audio_url": audio_url})
 
     except Exception as e:
         print("🔥 Exception occurred:", str(e))
@@ -66,4 +68,4 @@ def chat():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-
+    
