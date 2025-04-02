@@ -1,16 +1,25 @@
 from flask import Flask, request, jsonify, send_from_directory
 import os
 import requests
+import json
 import base64
 import time
+from io import BytesIO
+from google.oauth2 import service_account
+from google.cloud import storage
 
 app = Flask(__name__, static_folder="static")
-TEMP_AUDIO_FOLDER = os.path.join("static", "audio")
-os.makedirs(TEMP_AUDIO_FOLDER, exist_ok=True)
 
-# === Webhook URLs ===
+# === Webhook URLs (Update these with your actual n8n webhook URLs) ===
 N8N_CHAT_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/8822c292-c476-49a6-8353-fcc45d67dea9"
 N8N_VOICE_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/a713fdd6-6923-4a6b-a906-0e381c1681ef"
+
+# === Google Cloud credentials ===
+GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
+gcs_credentials = service_account.Credentials.from_service_account_info(json.loads(GCS_KEY_JSON))
+storage_client = storage.Client(credentials=gcs_credentials)
+bucket = storage_client.bucket(GCS_BUCKET_NAME)
 
 @app.route('/')
 def home():
@@ -46,21 +55,20 @@ def chat():
         response_data = response.json()
         print("📝 n8n Response data:", response_data)
 
+        marcus_reply = response_data.get("response", "")
+        audio_url = response_data.get("audio_url", None)
         audio_data_b64 = response_data.get("audio_data")
-        audio_url = None
 
         if audio_data_b64:
             audio_bytes = base64.b64decode(audio_data_b64)
             audio_filename = f"marcus_reply_{int(time.time())}.mp3"
-            audio_path = os.path.join(TEMP_AUDIO_FOLDER, audio_filename)
-            with open(audio_path, "wb") as f:
-                f.write(audio_bytes)
-            audio_url = f"/static/audio/{audio_filename}"
-            print("🔊 Saved audio file:", audio_url)
-        else:
-            print("❌ No audio data received")
+            blob = bucket.blob(audio_filename)
+            blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
+            blob.make_public()
+            audio_url = blob.public_url
+            print("🔊 Uploaded audio to GCS:", audio_url)
 
-        return jsonify({"audio_url": audio_url})
+        return jsonify({"response": marcus_reply, "audio_url": audio_url})
 
     except Exception as e:
         print("🔥 Exception occurred:", str(e))
@@ -68,4 +76,3 @@ def chat():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
-    
