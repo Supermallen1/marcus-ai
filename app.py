@@ -10,11 +10,10 @@ from google.cloud import storage
 
 app = Flask(__name__, static_folder="static")
 
-# === Webhook URLs (Update these with your actual n8n webhook URLs) ===
-N8N_CHAT_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/8822c292-c476-49a6-8353-fcc45d67dea9"
-N8N_VOICE_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/a713fdd6-6923-4a6b-a906-0e381c1681ef"
+# === Webhook URL to Marcus (Production) ===
+N8N_MARCUS_WEBHOOK_URL = "https://supermallen.app.n8n.cloud/webhook/8248cbab-abaa-4490-aa7d-6ff07a87be62"
 
-# === Google Cloud credentials ===
+# === Google Cloud Storage Setup ===
 GCS_KEY_JSON = os.getenv("GCS_KEY_JSON")
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET")
 gcs_credentials = service_account.Credentials.from_service_account_info(json.loads(GCS_KEY_JSON))
@@ -37,38 +36,39 @@ def chat():
         return jsonify({"error": "No input provided"}), 400
 
     try:
-        webhook_url = N8N_VOICE_WEBHOOK_URL if input_type else N8N_CHAT_WEBHOOK_URL
-        print("🧠 Webhook selected:", webhook_url)
+        # Prepare request to Marcus via n8n webhook
+        print("🧠 Using Marcus webhook:", N8N_MARCUS_WEBHOOK_URL)
 
         data = {
             "message": user_input,
-            "type": "voice" if input_type else "text"
+            "sessionId": "marcus-session-001",  # Optional: replace with dynamic ID if needed
+            "input_type": "voice" if input_type else "text"
         }
-        print("📦 Payload to n8n:", data)
 
         files = request.files.getlist("files")
         file_payload = [("files", (f.filename, f.stream, f.content_type)) for f in files]
 
-        response = requests.post(webhook_url, data=data, files=file_payload)
+        response = requests.post(N8N_MARCUS_WEBHOOK_URL, data=data, files=file_payload)
         print("✅ n8n Response status:", response.status_code)
 
-        response_data = response.json()
-        print("📝 n8n Response data:", response_data)
-
-        marcus_reply = response_data.get("response", "")
-        audio_url = response_data.get("audio_url", None)
-        audio_data_b64 = response_data.get("audio_data")
-
-        if audio_data_b64:
-            audio_bytes = base64.b64decode(audio_data_b64)
+        content_type = response.headers.get("Content-Type", "")
+        if "audio" in content_type:
+            audio_bytes = response.content
             audio_filename = f"marcus_reply_{int(time.time())}.mp3"
+
+            # Upload to GCS
             blob = bucket.blob(audio_filename)
             blob.upload_from_file(BytesIO(audio_bytes), content_type="audio/mpeg")
             blob.make_public()
             audio_url = blob.public_url
-            print("🔊 Uploaded audio to GCS:", audio_url)
+            print("🔊 Audio uploaded to GCS:", audio_url)
 
-        return jsonify({"response": marcus_reply, "audio_url": audio_url})
+            return jsonify({"audio_url": audio_url})
+
+        # Fallback: handle non-audio response
+        response_data = response.json()
+        print("📝 Fallback response from Marcus:", response_data)
+        return jsonify(response_data)
 
     except Exception as e:
         print("🔥 Exception occurred:", str(e))
