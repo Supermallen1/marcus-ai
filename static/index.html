@@ -104,13 +104,14 @@
     };
 
     async function sendMessage(isVoice, userMessage = null) {
+      const chatBox = document.getElementById("chat-box");
+
       if (!userMessage) {
         userMessage = document.getElementById("user-input").value;
         document.getElementById("user-input").value = "";
       }
       if (!userMessage && document.getElementById("file-input").files.length === 0) return;
 
-      const chatBox = document.getElementById("chat-box");
       if (!isVoice) {
         chatBox.innerHTML += `<p><strong>You:</strong> ${userMessage}</p>`;
       }
@@ -131,16 +132,25 @@
           body: formData
         });
 
-        const data = await response.json();
-        console.log("Response received:", data);
+        const contentType = response.headers.get("Content-Type");
 
-        if (isVoice && data.audio_url) {
-          const audio = new Audio(data.audio_url);
+        if (contentType && contentType.includes("audio")) {
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
           audio.play();
-        } else if (!isVoice && data.response) {
-          chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
         } else {
-          chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
+          const data = await response.json();
+          console.log("Response received:", data);
+
+          if (isVoice && data.audio_url) {
+            const audio = new Audio(data.audio_url);
+            audio.play();
+          } else if (!isVoice && data.response) {
+            chatBox.innerHTML += `<p><strong>Marcus:</strong> ${data.response}</p>`;
+          } else {
+            chatBox.innerHTML += `<p><strong>Marcus:</strong> Error or undefined response</p>`;
+          }
         }
 
         chatBox.scrollTop = chatBox.scrollHeight;
